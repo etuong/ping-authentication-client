@@ -52,6 +52,7 @@ class Home extends React.Component {
   }
 
   componentDidMount() {
+    console.log(window.location);
     const hashes = authClient.parseHash();
     if (hashes.error && hashes.error_description) {
       this.setState({
@@ -175,22 +176,20 @@ class Home extends React.Component {
 
   render() {
     const { errorMessage, access_token, idTokenJson, userInfo } = this.state;
-    const alert = errorMessage && (
-      <div className="alert alert-danger">{errorMessage}</div>
-    );
 
-    const content = access_token ? (
+    const content = errorMessage ? (
+      <div style={{ color: "red" }}>{errorMessage}</div>
+    ) : access_token ? (
       <div className="home-app">
         <em>Congratulations! This is a secure resource.</em>
         <p />
         <div className="input-field">
           <button type="button" onClick={this.handleSignOff}>
-            {" "}
             Sign Off
           </button>
         </div>
-        <InfoTable btnLabel={"User Information"} data={userInfo} />
-        <InfoTable btnLabel={"User Id Token Information"} data={idTokenJson} />
+        {/* <InfoTable btnLabel={"User Information"} data={userInfo} /> */}
+        <InfoTable btnLabel={"User ID Token Information"} data={idTokenJson} />
       </div>
     ) : (
       <div id="signInView">
@@ -207,8 +206,7 @@ class Home extends React.Component {
 
     return (
       <div className="container">
-        <h1>PingOne for Customers OIDC Sample</h1>
-        {alert}
+        <h1>PingOne OpenID Connect Sample</h1>
         {content}
       </div>
     );

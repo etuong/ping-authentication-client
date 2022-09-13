@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { flatten, CLAIMS_MAPPING } from "../sdk/api";
 
 /**
- * React component for displaying user id token information of data from the UserInfo endpoint, that returns claims about the authenticated end user
+ * React component for displaying user ID token information of data from the UserInfo endpoint, that returns claims about the authenticated end user
  */
 class InfoTable extends React.Component {
   constructor(props) {
@@ -52,7 +52,6 @@ class InfoTable extends React.Component {
         </div>
         <div className="input-field">
           <button type="button" onClick={this.hideData}>
-            {" "}
             Hide {this.props.btnLabel}
           </button>
         </div>
@@ -60,7 +59,6 @@ class InfoTable extends React.Component {
     ) : (
       <div className="input-field">
         <button type="button" onClick={this.showData}>
-          {" "}
           Show {this.props.btnLabel}
         </button>
       </div>

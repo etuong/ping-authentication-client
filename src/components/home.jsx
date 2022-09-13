@@ -1,31 +1,23 @@
-import React from "react";
-import authClient from "../sdk/api";
-import PropTypes from "prop-types";
 import _ from "lodash";
-import InfoTable from "./infoTable";
+import React, { useEffect, useState } from "react";
 import config from "../config";
+import authClient from "../sdk/api";
+import InfoTable from "./infoTable";
 
 /**
- * React component for managing the return entry point of the implicit OAuth 2.0 flow and is expecting "access_token", "id_token" or "code" in a redirect uri.
+ * React component for managing the return entry point of the implicit OAuth 2.0 flow and is expecting "accessToken", "idToken" or "code" in a redirect uri.
  * The user will be redirected to this point based on the redirect_uri in config.js - the URL that specifies the return entry point of this application.
  */
-class Home extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      access_token: null,
-      id_token: null,
-      idTokenJson: null,
-      userInfo: null,
-      errorMessage: "",
-    };
 
-    this.handleSignIn = this.handleSignIn.bind(this);
-    this.handleSignOff = this.handleSignOff.bind(this);
-  }
+const Home = (props) => {
+  const [accessToken, setAccessToken] = useState(null);
+  const [idToken, setIdToken] = useState(null);
+  const [idTokenJson, setIdTokenJson] = useState(null);
+  const [userInfo, setUserInfo] = useState(null);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  handleSignIn() {
-    this.clearSession();
+  const handleSignIn = () => {
+    clearSession();
     let state = authClient.generateRandomValue();
     let nonce = authClient.generateRandomValue();
     // Store state and nonce parameters into the session, so we can retrieve them after
@@ -34,30 +26,25 @@ class Home extends React.Component {
     sessionStorage.setItem("nonce", nonce);
 
     authClient.authorize(state, nonce);
-  }
+  };
 
-  handleSignOff() {
-    if (this.state.id_token) {
-      authClient.signOff(this.state.id_token, sessionStorage.getItem("state"));
+  const handleSignOff = () => {
+    if (idToken) {
+      authClient.signOff(idToken, sessionStorage.getItem("state"));
     }
-    this.clearSession();
-  }
+    clearSession();
+  };
 
-  clearSession() {
-    this.setState({
-      access_token: null,
-      id_token: null,
-      errorMessage: "",
-    });
-  }
+  const clearSession = () => {
+    setAccessToken(null);
+    setIdToken(null);
+    setErrorMessage("");
+  };
 
-  componentDidMount() {
-    console.log(window.location);
+  useEffect(() => {
     const hashes = authClient.parseHash();
     if (hashes.error && hashes.error_description) {
-      this.setState({
-        errorMessage: hashes.error + ": " + hashes.error_description,
-      });
+      setErrorMessage(hashes.error + ": " + hashes.error_description);
       return;
     }
 
@@ -67,76 +54,64 @@ class Home extends React.Component {
       !stateMatch[1] &&
       !_.isEqual(stateMatch[1], sessionStorage.getItem("state"))
     ) {
-      this.setState({
-        errorMessage: "State parameter mismatch. ",
-      });
-      this.clearSession();
+      setErrorMessage("State parameter mismatch. ");
+      clearSession();
       return;
     }
 
     const codeMatch = window.location.href.match("[?#&]code=([^&]*)");
     // Implicit flow: access token is present in URL
     if (hashes.access_token) {
-      this.setState({
-        access_token: hashes.access_token,
-      });
-      this.handleUserInfo(hashes.access_token);
+      setAccessToken(hashes.access_token);
+      handleUserInfo(hashes.access_token);
     }
     // Authorization code flow: access code is present in URL
     else if (codeMatch && codeMatch[1]) {
       authClient
         .getAccessToken(codeMatch[1])
         .then((token) => {
-          this.setState({
-            access_token: token.access_token,
-            id_token: token.id_token,
-          });
-          this.handleUserInfo(token.access_token);
-          this.verifyToken(token.id_token);
+          setAccessToken(token.accessToken);
+          setIdToken(token.idToken);
+          handleUserInfo(token.accessToken);
+          verifyToken(token.idToken);
         })
         .catch((error) => {
-          this.setState({
-            errorMessage:
-              "Couldn't get an access token. " +
-              _.get(error, "error_description", _.get(error, "message", "")),
-          });
+          setErrorMessage(
+            "Couldn't get an access token. " +
+              _.get(error, "error_description", _.get(error, "message", ""))
+          );
         });
     }
 
     if (hashes.id_token) {
-      this.verifyToken(hashes.id_token);
+      verifyToken(hashes.id_token);
     }
     // Replace current URL without adding it to history entries
     window.history.replaceState({}, "", "/");
-  }
+  }, []);
 
-  verifyToken(id_token) {
+  const verifyToken = (idToken) => {
     authClient
-      .verifyIdToken(id_token, {
+      .verifyIdToken(idToken, {
         nonce: sessionStorage.getItem("nonce"),
         maxAge: config.maxAge,
       })
       .then((idToken) => {
-        this.setState({
-          idTokenJson: idToken,
-        });
+        setIdTokenJson(idToken);
       })
       .catch((error) => {
-        this.setState({
-          errorMessage:
-            "Id token verification failed. " +
-            _.get(error, "error_description", _.get(error, "message", error)),
-        });
+        setErrorMessage(
+          "Id token verification failed. " +
+            _.get(error, "error_description", _.get(error, "message", error))
+        );
       });
-  }
+  };
 
-  handleUserInfo(access_token) {
+  const handleUserInfo = (accessToken) => {
     authClient
-      .getUserInfo(access_token)
+      .getUserInfo(accessToken)
       .then((result) => {
-        this.setState({
-          userInfo: result,
-        });
+        setUserInfo(result);
       })
       .catch((error) => {
         const errorDetail = _.get(error, "details[0].code", null);
@@ -146,85 +121,61 @@ class Home extends React.Component {
               "Access token expired"
             )
           ) {
-            this.setState({
-              errorMessage: "Your access token is expired. Please login again.",
-            });
+            setErrorMessage(
+              "Your access token is expired. Please login again."
+            );
           } else {
-            this.setState({
-              errorMessage: _.get(error, "details[0].message", null),
-            });
+            setErrorMessage(_.get(error, "details[0].message", null));
           }
         } else if (errorDetail) {
-          this.setState({
-            errorMessage:
-              errorDetail + _.get(error, "details[0].message", null),
-          });
+          setErrorMessage(
+            errorDetail + _.get(error, "details[0].message", null)
+          );
         } else if (
           _.get(error, "error", null) ||
           _.get(error, "error_description", null)
         ) {
-          this.setState({
-            errorMessage:
-              _.get(error, "error", null) +
+          setErrorMessage(
+            _.get(error, "error", null) +
               ": " +
-              _.get(error, "error_description", null),
-          });
+              _.get(error, "error_description", null)
+          );
         }
         return Promise.reject(error);
       });
-  }
+  };
 
-  render() {
-    const { errorMessage, access_token, idTokenJson, userInfo } = this.state;
-
-    const content = errorMessage ? (
-      <div style={{ color: "red" }}>{errorMessage}</div>
-    ) : access_token ? (
-      <div className="home-app">
-        <em>Congratulations! This is a secure resource.</em>
-        <p />
-        <div className="input-field">
-          <button type="button" onClick={this.handleSignOff}>
-            Sign Off
-          </button>
-        </div>
-        {/* <InfoTable btnLabel={"User Information"} data={userInfo} /> */}
-        <InfoTable btnLabel={"User ID Token Information"} data={idTokenJson} />
+  const content = errorMessage ? (
+    <div style={{ color: "red" }}>{errorMessage}</div>
+  ) : accessToken ? (
+    <div className="home-app">
+      <em>Congratulations! This is a secure resource.</em>
+      <p />
+      <div className="input-field">
+        <button type="button" onClick={handleSignOff}>
+          Sign Off
+        </button>
       </div>
-    ) : (
-      <div id="signInView">
-        <p>
-          You are not currently authenticated. Click Sign On to get started.
-        </p>
-        <div className="input-field">
-          <button type="button" onClick={this.handleSignIn}>
-            Sign On
-          </button>
-        </div>
+      {/* <InfoTable btnLabel={"User Information"} data={userInfo} /> */}
+      <InfoTable btnLabel={"User ID Token Information"} data={idTokenJson} />
+    </div>
+  ) : (
+    <div id="signInView">
+      <p>You are not currently authenticated. Click Sign On to get started.</p>
+      <div className="input-field">
+        <button type="button" onClick={handleSignIn}>
+          Sign On
+        </button>
       </div>
-    );
+    </div>
+  );
 
-    return (
-      <div className="container">
-        <h1>PingOne OpenID Connect Sample</h1>
-        {content}
-      </div>
-    );
-  }
-}
-
-Home.propTypes = {
-  environmentId: PropTypes.string.isRequired,
-  clientId: PropTypes.string.isRequired,
-  clientSecret: PropTypes.string,
-  scope: PropTypes.string.isRequired,
-  responseType: PropTypes.string,
-  tokenEndpointAuthMethod: PropTypes.string.isRequired,
-  grantType: PropTypes.string,
-  prompt: PropTypes.string,
-  redirectUri: PropTypes.string,
-  logoutRedirectUri: PropTypes.string,
-  maxAge: PropTypes.number,
+  return (
+    <div className="container">
+      <h1>PingOne OpenID Connect Sample</h1>
+      {content}
+    </div>
+  );
 };
 
 export default Home;

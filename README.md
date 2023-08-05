@@ -1,6 +1,6 @@
 # Introduction
 
-This is a small React sample that shows how to use of OAuth2 authentication inside your react applications.
+This is a small React sample that shows how to use of OAuth2 authentication inside a React application.
 It handles OAuth 2.0 implicit flow by default, where the access token is returned immediately without an extra authorization code exchange step.
 But you can check the other flows here as well. In particular, the authorization grants like `authorization_code` or `client_credentials`, where your application will call the `/{environmentId}/as/token` endpoint to acquire the access token.
 
